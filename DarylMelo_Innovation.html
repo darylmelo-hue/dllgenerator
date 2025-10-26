@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Daily Lesson Log (DLL) Generator for TLE Teachers</title>
+    
+    <!-- 1. Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. React CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- 3. Babel CDN (for JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- 4. Custom Print Styles -->
+    <style>
+        @media print {
+            /* Hide everything except the DLL form */
+            body > * {
+                display: none !important;
+            }
+            
+            #dll-container, #dll-container * {
+                display: block !important;
+                visibility: visible !important;
+            }
+
+            #dll-form {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                border: none;
+                box-shadow: none;
+                font-size: 10pt; /* Smaller font for printing */
+            }
+
+            /* Hide elements marked with 'no-print' */
+            .no-print {
+                display: none !important;
+            }
+
+            /* Remove borders from editable fields when printing */
+            [contenteditable="true"] {
+                border: none !important;
+                padding: 2px 0 !important;
+            }
+
+            /* Ensure table borders are clear */
+            table, th, td {
+                border: 1px solid black !important;
+                border-collapse: collapse !important;
+            }
+            
+            th, td {
+                padding: 4px 6px !important;
+                color: black !important;
+            }
+
+            /* Prevent page breaks inside table rows */
+            tr {
+                page-break-inside: avoid !important;
+            }
+            
+            @page {
+                size: auto; /* A4, Letter, etc. */
+                margin: 0.5in; /* Standard margins */
+            }
+        }
+
+        /* Styles for contentEditable fields */
+        [contenteditable="true"] {
+            padding: 8px;
+            border: 1px dashed #cbd5e1; /* Light gray border */
+            border-radius: 4px;
+            min-height: 40px;
+            background-color: #f8fafc; /* Very light gray bg */
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        [contenteditable="true"]:focus {
+            border: 1px solid #3b82f6; /* Blue border on focus */
+            background-color: #fff;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="root" class="antialiased"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, StrictMode } = React;
+
+        /**
+         * =================================================================
+         * MOCK AI ASSISTANT (Simulates GPT-based, MELC-aligned generation)
+         * =================================================================
+         * This function mimics an AI call. It takes user inputs and returns
+         * a complete, structured JSON object for the DLL.
+         */
+        const mockAIAssistant = (gradeLevel, quarter, topic, specialization) => {
+            console.log("Mock AI generating for:", { gradeLevel, quarter, topic, specialization });
+            
+            let data = {};
+            const topicLower = topic.toLowerCase();
+            const specLower = specialization.toLowerCase().replace(/\s/g, '');
+
+            // --- DEFAULT/GENERIC TLE CONTENT ---
+            data.objectives = {
+                a_knowledge: "Define the key terms related to [Topic].",
+                b_skills: "Demonstrate the basic procedure for [Basic Skill related to Topic].",
+                c_attitude: "Appreciate the importance of safety and precision in TLE."
+            };
+            data.content = {
+                contentStandards: `The learner demonstrates an understanding of the basic concepts and principles of ${topic}.`,
+                performanceStandards: `The learner independently applies the concepts and principles of ${topic} to a practical task.`,
+                learningCompetencies: `Identify and discuss the core components of ${topic}. (e.g., TLE_${specLower.toUpperCase()}${gradeLevel}Q${quarter}-0a-1)`
+            };
+            data.resources = {
+                a_references: `TLE ${specialization} Teacher's Guide, pp. 10-15\nTLE ${specialization} Learner's Module, pp. 12-18`,
+                b_materials: "Laptop, Projector, Whiteboard, Markers, Sample Materials (e.g., tools, ingredients)"
+            };
+            data.procedures = {
+                review: "Ask students: What was our lesson last week? How does it connect to our new topic today?",
+                motivation: "Show a short video or picture related to [Topic]. Ask: What do you see? Why is this important in our daily lives or for a future job?",
+                presentation: `1. Present the learning objectives.\n2. Introduce the key concepts of ${topic} using a PowerPoint presentation or demonstration.\n3. Define key terminologies.`,
+                application: "Group Activity: In groups of 5, have students perform a simple task related to the lesson. (e.g., 'Identify the Parts of...' or 'Sketch a Plan for...').",
+                generalization: "Ask summarizing questions: \n1. What are the key concepts of ${topic} we learned today?\n2. Why is it important to master this skill?",
+                evaluation: `Short Quiz (5 items):\n1. [Multiple Choice Question]\n2. [Identification Question]\n3. [Enumeration Question]`,
+                assignment: "Research on the next topic: [Next Logical Topic]. Write 5 important facts in your TLE notebook."
+            };
+
+            // --- SPECIALIZATION: COOKERY ---
+            if (specLower.includes('cookery')) {
+                data.content.contentStandards = `The learner demonstrates an understanding of core concepts and principles in Cookery.`;
+                data.content.performanceStandards = `The learner independently demonstrates core competencies in Cookery as prescribed in the TESDA Training Regulations.`;
+                if (topicLower.includes('appetizer')) {
+                    data.objectives = {
+                        a_knowledge: "Identify the tools, equipment, and ingredients used in preparing appetizers.",
+                        b_skills: "Prepare a variety of hot and cold appetizers based on given recipes.",
+                        c_attitude: "Observe safety and sanitation procedures while preparing appetizers."
+                    };
+                    data.content.learningCompetencies = `Perform Mise en Place for appetizer preparation.\n(TLE_HECK9-12PA-Ia-1)`;
+                    data.resources.b_materials = "Mixing bowls, knives, chopping board, plates, ingredients for canapés and hors d'oeuvres.";
+                    data.procedures.review = "Review: What are the different kitchen tools and equipment we discussed last time?";
+                    data.procedures.motivation = "Show pictures of various colorful appetizers (canapés, bruschetta, skewers). Ask: 'When do you usually see this food? What makes them appealing?'";
+                    data.procedures.presentation = `1. Discuss the classification of appetizers (hot vs. cold).\n2. Demonstrate the proper way to prepare canapés.\n3. Present the rubric for the upcoming activity.`;
+                    data.procedures.application = "Group Activity: 'Appetizer Challenge'. Each group will prepare 10 pieces of a simple cold appetizer (e.g., cucumber-cream cheese canapés).";
+                    data.procedures.evaluation = "Practical Test: Students will be graded on their output using the prepared rubric (Taste, Presentation, Safety & Sanitation, Teamwork).";
+                    data.procedures.assignment = "Bring ingredients for preparing a hot appetizer for next meeting.";
+                }
+            }
+
+            // --- SPECIALIZATION: ICT - CSS (Computer Systems Servicing) ---
+            if (specLower.includes('css') || specLower.includes('ict')) {
+                data.content.contentStandards = `The learner demonstrates an understanding of concepts and principles in setting up computer networks.`;
+                data.content.performanceStandards = `The learner independently demonstrates the correct procedure for setting up computer networks.`;
+                if (topicLower.includes('network') || topicLower.includes('cabling')) {
+                    data.objectives = {
+                        a_knowledge: "Identify the different network cable types (UTP, STP) and the T568A/T568B wiring standards.",
+                        b_skills: "Properly crimp a UTP cable to create a straight-through and a crossover cable.",
+                        c_attitude: "Practice Occupational Health and Safety (OHS) procedures when handling tools and computer components."
+                    };
+                    data.content.learningCompetencies = `Install network cables.\n(TLE_IACSS9-12SUCN-IIa-j-31)`;
+                    data.resources.b_materials = "UTP Cable (Cat5e/6), RJ45 connectors, Crimping tool, LAN tester, Wire stripper.";
+                    data.procedures.review = "Review: What are the components of a computer system? What is a computer network?";
+                    data.procedures.motivation = "Show a non-functional LAN cable. Ask: 'If your computer is connected with this, why can't you access the internet? What's wrong?'";
+                    data.procedures.presentation = `1. Discuss the different types of network cables.\n2. Demonstrate step-by-step procedure of UTP cable crimping (T568B standard).\n3. Show the color-coding difference between T568A and T568B.`;
+                    data.procedures.application = "Hands-on Activity: 'Crimp Me a Cable!' By pair, students will create one 1-meter straight-through UTP cable. They must test it using the LAN tester.";
+                    data.procedures.evaluation = "Practical Test: The created UTP cable will be checked using the LAN tester. (Pass/Fail). \nRubric: Correct color-coding, proper crimp, pass LAN test.";
+                    data.procedures.assignment = "Research the difference between a straight-through cable and a crossover cable. When is each one used?";
+                }
+            }
+
+            // --- SPECIALIZATION: EIM (Electrical Installation and Maintenance) ---
+            if (specLower.includes('eim') || specLower.includes('electrical')) {
+                data.content.contentStandards = `The learner demonstrates an understanding of the concepts in performing roughing-in activities for single-phase distribution systems.`;
+                data.content.performanceStandards = `The learner independently performs roughing-in activities for single-phase distribution systems based on PEC standards and local codes.`;
+                if (topicLower.includes('electrical tools') || topicLower.includes('tools')) {
+                    data.objectives = {
+                        a_knowledge: "Identify and classify common electrical tools and equipment (e.g., boring, cutting, driving).",
+                        b_skills: "Demonstrate the proper use and maintenance of at least three (3) electrical tools.",
+                        c_attitude: "Value the importance of using the correct electrical tool for the right job to ensure safety."
+                    };
+                    data.content.learningCompetencies = `Prepare electrical tools and materials for installation.\n(TLE_IAEI9-12ES-Ia-c-1)`;
+                    data.resources.b_materials = "Actual electrical tools (Pliers, Screwdrivers, Wire stripper, Hammer, Gimlet), Wires, Utility box.";
+                    data.procedures.review = "Review: What is OHS? Why is it important in EIM?";
+                    data.procedures.motivation = "Show pictures of two scenarios: 1) A person using pliers to hammer a nail. 2) A person using a hammer. Ask: 'What is wrong with picture 1? What is the correct way?'";
+                    data.procedures.presentation = `1. Present the different classifications of electrical tools (driving, boring, cutting, holding).\n2. Show each tool and demonstrate its proper use. (e.g., How to properly strip a wire using a wire stripper).`;
+                    data.procedures.application = "Station-based Activity: Set up 3 stations. \n1. Wire Stripping Station\n2. Screw Driving Station (in a utility box)\n3. Cable Clamping Station\nStudents rotate and perform each task, guided by the teacher.";
+                    data.procedures.evaluation = "Practical Identification: 10 actual tools will be laid on a table. Students will come up, pick a tool, name it, and state its function.";
+                    data.procedures.assignment = "Draw at least 5 electrical tools in your notebook and label their parts.";
+                }
+            }
+            
+            // Final step: Replace any [Topic] or [Basic Skill] placeholders with the user's input
+            const regexTopic = /\[Topic\]/g;
+            const regexSkill = /\[Basic Skill related to Topic\]/g;
+            const regexNextTopic = /\[Next Logical Topic\]/g;
+
+            return JSON.parse(
+                JSON.stringify(data)
+                    .replace(regexTopic, topic)
+                    .replace(regexSkill, `basic ${topic} skill`)
+                    .replace(regexNextTopic, `an advanced ${topic} concept`)
+            );
+        };
+        
+        // =================================================================
+        // DEFAULT STATE (Empty structures)
+        // =================================================================
+        const defaultTeacherInfo = {
+            schoolName: "DepEd Division of [Your City]",
+            teacherName: "[Your Name]",
+            gradeSection: "Grade [No.] - [Section]",
+            learningArea: "TLE - [Specialization]",
+            date: new Date().toISOString().split('T')[0], // Today's date
+            weekNo: "Week [No.]",
+            preparedBy: "[Your Name]",
+            checkedBy: "[Your Department Head/Principal's Name]"
+        };
+
+        const defaultLessonInputs = {
+            gradeLevel: "9",
+            quarter: "1",
+            topic: "Prepare Appetizers",
+            specialization: "Cookery"
+        };
+        
+        const defaultDLLContent = {
+            objectives: { a_knowledge: "", b_skills: "", c_attitude: "" },
+            content: { contentStandards: "", performanceStandards: "", learningCompetencies: "" },
+            resources: { a_references: "", b_materials: "" },
+            procedures: {
+                review: "",
+                motivation: "",
+                presentation: "",
+                application: "",
+                generalization: "",
+                evaluation: "",
+                assignment: ""
+            },
+            remarks: "",
+            reflection: {
+                a: "No. of learners who earned 80% in the evaluation",
+                b: "No. of learners who require additional activities for remediation",
+                c: "Did the remedial lessons work? No. of learners who have caught up with the lesson",
+                d: "No. of learners who continue to require remediation",
+                e: "Which of my teaching strategies worked well? Why did these work?",
+                f: "What difficulties did I encounter which my principal or supervisor can help me solve?",
+                g: "What innovation or localized materials did I use/discover which I wish to share with other teachers?"
+            }
+        };
+
+        /**
+         * =================================================================
+         * FOOTER COMPONENT (NEW)
+         * =================================================================
+         */
+        const InnovationFooter = ({ className = "" }) => (
+            <footer className={`text-center text-sm text-gray-500 mt-8 ${className}`}>
+                <p><strong>Innovator:</strong> Daryl S. Melo</p>
+                <p><strong>Course Project:</strong> EDUCATIONAL INNOVATIONS AND TECHNOLOGY - INNOVATION</p>
+            </footer>
+        );
+
+        /**
+         * =================================================================
+         * MAIN REACT APPLICATION
+         * =================================================================
+         */
+        function App() {
+            // --- STATE MANAGEMENT ---
+            
+            // State for the initial user inputs
+            const [lessonInputs, setLessonInputs] = useState(defaultLessonInputs);
+            
+            // State for the teacher's information (loaded from localStorage)
+            const [teacherInfo, setTeacherInfo] = useState(() => {
+                const saved = localStorage.getItem('tle-dll-teacherInfo');
+                return saved ? JSON.parse(saved) : defaultTeacherInfo;
+            });
+            
+            // State for the generated DLL content (loaded from localStorage)
+            const [dllContent, setDllContent] = useState(() => {
+                const saved = localStorage.getItem('tle-dll-content');
+                return saved ? JSON.parse(saved) : defaultDLLContent;
+            });
+            
+            // State to control which view is shown (form or DLL)
+            const [isGenerated, setIsGenerated] = useState(() => {
+                 const saved = localStorage.getItem('tle-dll-content');
+                 // If there's saved content, show the DLL by default
+                 return !!saved;
+            });
+
+            // --- LOCALSTORAGE EFFECTS ---
+            
+            // Save teacherInfo to localStorage whenever it changes
+            useEffect(() => {
+                localStorage.setItem('tle-dll-teacherInfo', JSON.stringify(teacherInfo));
+            }, [teacherInfo]);
+            
+            // Save dllContent to localStorage whenever it changes
+            useEffect(() => {
+                if (isGenerated) {
+                    localStorage.setItem('tle-dll-content', JSON.stringify(dllContent));
+                } else {
+                    localStorage.removeItem('tle-dll-content');
+                }
+            }, [dllContent, isGenerated]);
+
+            // --- EVENT HANDLERS ---
+            
+            // Handles changes in the initial lesson input form
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                setLessonInputs(prev => ({ ...prev, [name]: value }));
+            };
+            
+            // Handles changes in the teacher info panel
+            const handleInfoChange = (e) => {
+                const { name, value } = e.target;
+                setTeacherInfo(prev => ({ ...prev, [name]: value }));
+            };
+            
+            // Handles edits in the contentEditable DLL fields
+            const handleDLLChange = (e, section, subsection = null, subkey = null) => {
+                const newValue = e.target.innerText;
+                
+                setDllContent(prev => {
+                    const newState = JSON.parse(JSON.stringify(prev)); // Deep copy
+                    
+                    if (subsection) {
+                        if (subkey) {
+                            newState[section][subsection][subkey] = newValue;
+                        } else {
+                            newState[section][subsection] = newValue;
+                        }
+                    } else {
+                        newState[section] = newValue;
+                    }
+                    return newState;
+                });
+            };
+            
+            // Main "Generate" button handler
+            const handleGenerate = (e) => {
+                e.preventDefault();
+                
+                // Call the mock AI to get new content
+                const newContent = mockAIAssistant(
+                    lessonInputs.gradeLevel,
+                    lessonInputs.quarter,
+                    lessonInputs.topic,
+                    lessonInputs.specialization
+                );
+                
+                // Merge with default remarks/reflection
+                const fullDLL = {
+                    ...defaultDLLContent, // Start with default structure (for remarks/reflection)
+                    ...newContent, // Overwrite with AI-generated content
+                    remarks: "", // Ensure remarks are empty
+                    reflection: defaultDLLContent.reflection // Ensure reflection prompts are present
+                };
+
+                setDllContent(fullDLL);
+                
+                // Update teacher info with the new specialization
+                setTeacherInfo(prev => ({
+                    ...prev,
+                    learningArea: `TLE - ${lessonInputs.specialization}`,
+                    gradeSection: `Grade ${lessonInputs.gradeLevel} - [Section]`
+                }));
+                
+                setIsGenerated(true);
+            };
+
+            // "New Entry" button handler
+            const handleNewEntry = () => {
+                if (window.confirm("Are you sure you want to create a new entry? Your current DLL will be cleared.")) {
+                    setIsGenerated(false);
+                    setDllContent(defaultDLLContent);
+                    setLessonInputs(defaultLessonInputs);
+                    localStorage.removeItem('tle-dll-content');
+                }
+            };
+            
+            // "Print" button handler
+            const handlePrint = () => {
+                window.print();
+            };
+            
+            // "Export to DOCX" placeholder
+            const handleExportDOCX = () => {
+                alert("Export to DOCX Feature\n\nIn a real application, this would use a library (like 'html-doc-js') to convert the DLL table into a .docx file and trigger a download.");
+            };
+
+            // --- RENDER ---
+            
+            // A. The Input Form (shown if isGenerated is false)
+            if (!isGenerated) {
+                return (
+                    <div className="container mx-auto p-4 md:p-8 max-w-4xl">
+                        <header className="text-center mb-8">
+                            <h1 className="text-3xl font-bold text-blue-800">Automated Daily Lesson Log (DLL) Generator</h1>
+                            <p className="text-lg text-gray-600">for Philippine TLE Teachers</p>
+                        </header>
+                        
+                        <div className="bg-white p-6 rounded-lg shadow-lg">
+                            <form onSubmit={handleGenerate}>
+                                {/* --- 1. Teacher Information --- */}
+                                <fieldset className="mb-6 border p-4 rounded-md">
+                                    <legend className="text-xl font-semibold text-gray-700 px-2">Teacher Information</legend>
+                                    <p className="text-sm text-gray-500 mb-4">This information will be saved for future use.</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <Input label="School Name" name="schoolName" value={teacherInfo.schoolName} onChange={handleInfoChange} />
+                                        <Input label="Teacher's Name" name="teacherName" value={teacherInfo.teacherName} onChange={handleInfoChange} />
+                                        <Input label="Prepared By" name="preparedBy" value={teacherInfo.preparedBy} onChange={handleInfoChange} />
+                                        <Input label="Checked By (Head/Principal)" name="checkedBy" value={teacherInfo.checkedBy} onChange={handleInfoChange} />
+                                    </div>
+                                </fieldset>
+
+                                {/* --- 2. Lesson Details --- */}
+                                <fieldset className="border p-4 rounded-md">
+                                    <legend className="text-xl font-semibold text-gray-700 px-2">Lesson Details</legend>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <Select label="Grade Level" name="gradeLevel" value={lessonInputs.gradeLevel} onChange={handleInputChange} options={["7", "8", "9", "10", "11", "12"]} />
+                                        <Select label="Quarter" name="quarter" value={lessonInputs.quarter} onChange={handleInputChange} options={["1", "2", "3", "4"]} />
+                                        <Input label="TLE Specialization" name="specialization" value={lessonInputs.specialization} onChange={handleInputChange} placeholder="e.g., Cookery, ICT-CSS, EIM" />
+                                        <Input label="Lesson Topic / Title" name="topic" value={lessonInputs.topic} onChange={handleInputChange} placeholder="e.g., Prepare Appetizers, Network Cabling" />
+                                    </div>
+                                </fieldset>
+
+                                {/* --- 3. Generate Button --- */}
+                                <div className="mt-8 text-center">
+                                    <button type="submit" className="w-full md:w-1/2 bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 text-lg">
+                                        Generate Daily Lesson Log
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        {/* --- ADDED INNOVATOR FOOTER --- */}
+                        <InnovationFooter />
+                    </div>
+                );
+            }
+
+            // B. The DLL Display (shown if isGenerated is true)
+            return (
+                <div className="container mx-auto p-4">
+                    {/* --- Toolbar --- */}
+                    <div className="bg-white p-3 mb-4 rounded-lg shadow-md flex flex-wrap gap-2 justify-center no-print">
+                        <button onClick={handleNewEntry} className="bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700">
+                            New Entry
+                        </button>
+                        <button onClick={handlePrint} className="bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700">
+                            Print / Save as PDF
+                        </button>
+                        <button onClick={handleExportDOCX} className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+                            Export to DOCX (Demo)
+                        </button>
+                        <div className="w-full text-center text-sm text-gray-600 mt-2">
+                            <strong>Note:</strong> All sections in the DLL below are editable. Click any text to modify it. Changes are saved automatically.
+                        </div>
+                    </div>
+
+                    {/* --- DLL Form (Printable Area) --- */}
+                    <div id="dll-container">
+                        <div id="dll-form" className="bg-white p-6 md:p-8 rounded-lg shadow-lg">
+                            <h2 className="text-center font-bold text-lg mb-4">DAILY LESSON LOG</h2>
+                            
+                            {/* --- Teacher Info Panel --- */}
+                            <table className="w-full border border-black mb-4 text-sm">
+                                <tbody>
+                                    <tr className="border border-black">
+                                        <td className="p-2 border border-black">School:</td>
+                                        <td className="p-2 border border-black font-bold" colSpan="3">
+                                            <EditableField value={teacherInfo.schoolName} onBlur={(e) => handleInfoChange({target: {name: 'schoolName', value: e.target.innerText}})} />
+                                        </td>
+                                        <td className="p-2 border border-black">Grade Level:</td>
+                                        <td className="p-2 border border-black font-bold">
+                                            <EditableField value={teacherInfo.gradeSection} onBlur={(e) => handleInfoChange({target: {name: 'gradeSection', value: e.target.innerText}})} />
+                                        </td>
+                                    </tr>
+                                    <tr className="border border-black">
+                                        <td className="p-2 border border-black">Teacher:</td>
+                                        <td className="p-2 border border-black font-bold" colSpan="3">
+                                            <EditableField value={teacherInfo.teacherName} onBlur={(e) => handleInfoChange({target: {name: 'teacherName', value: e.target.innerText}})} />
+                                        </td>
+                                        <td className="p-2 border border-black">Learning Area:</td>
+                                        <td className="p-2 border border-black font-bold">
+                                            <EditableField value={teacherInfo.learningArea} onBlur={(e) => handleInfoChange({target: {name: 'learningArea', value: e.target.innerText}})} />
+                                        </td>
+                                    </tr>
+                                    <tr className="border border-black">
+                                        <td className="p-2 border border-black">Date / Week:</td>
+                                        <td className="p-2 border border-black font-bold" colSpan="3">
+                                            <EditableField value={teacherInfo.date + " / " + teacherInfo.weekNo} onBlur={(e) => {
+                                                const parts = e.target.innerText.split('/');
+                                                handleInfoChange({target: {name: 'date', value: (parts[0] || '').trim()}});
+                                                handleInfoChange({target: {name: 'weekNo', value: (parts[1] || '').trim()}});
+                                            }} />
+                                        </td>
+                                        <td className="p-2 border border-black">Quarter:</td>
+                                        <td className="p-2 border border-black font-bold">
+                                            <EditableField value={lessonInputs.quarter} onBlur={(e) => handleInputChange({target: {name: 'quarter', value: e.target.innerText}})} />
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            {/* --- Main DLL Content Table --- */}
+                            <table className="w-full border-collapse border border-black text-sm">
+                                <thead>
+                                    <tr className="bg-gray-100">
+                                        <th className="p-2 border border-black w-1/4">DLL Component</th>
+                                        <th className="p-2 border border-black w-3/4">Content</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {/* --- I. OBJECTIVES --- */}
+                                    <tr className="font-bold bg-gray-50">
+                                        <td className="p-2 border border-black" colSpan="2">I. OBJECTIVES</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">A. Knowledge</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField value={dllContent.objectives.a_knowledge} onBlur={(e) => handleDLLChange(e, 'objectives', 'a_knowledge')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">B. Skills</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField value={dllContent.objectives.b_skills} onBlur={(e) => handleDLLChange(e, 'objectives', 'b_skills')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">C. Attitude (Values)</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField value={dllContent.objectives.c_attitude} onBlur={(e) => handleDLLChange(e, 'objectives', 'c_attitude')} />
+                                        </td>
+                                    </tr>
+                                    
+                                    {/* --- II. CONTENT --- */}
+                                    <tr className="font-bold bg-gray-50">
+                                        <td className="p-2 border border-black" colSpan="2">II. CONTENT (Lesson: {lessonInputs.topic})</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">A. Content Standards</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField value={dllContent.content.contentStandards} onBlur={(e) => handleDLLChange(e, 'content', 'contentStandards')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">B. Performance Standards</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField value={dllContent.content.performanceStandards} onBlur={(e) => handleDLLChange(e, 'content', 'performanceStandards')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">C. Learning Competencies / MELCs (with code)</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField multiline={true} value={dllContent.content.learningCompetencies} onBlur={(e) => handleDLLChange(e, 'content', 'learningCompetencies')} />
+                                        </td>
+                                    </tr>
+
+                                    {/* --- III. LEARNING RESOURCES --- */}
+                                    <tr className="font-bold bg-gray-50">
+                                        <td className="p-2 border border-black" colSpan="2">III. LEARNING RESOURCES</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">A. References (TG, LM, Textbooks)</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField multiline={true} value={dllContent.resources.a_references} onBlur={(e) => handleDLLChange(e, 'resources', 'a_references')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">B. Other Materials (Portal, Tools, etc.)</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField multiline={true} value={dllContent.resources.b_materials} onBlur={(e) => handleDLLChange(e, 'resources', 'b_materials')} />
+                                        </td>
+                                    </tr>
+                                    
+                                    {/* --- IV. PROCEDURES --- */}
+                                    <tr className="font-bold bg-gray-50">
+                                        <td className="p-2 border border-black" colSpan="2">IV. PROCEDURES</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">A. Review/Drill</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField multiline={true} value={dllContent.procedures.review} onBlur={(e) => handleDLLChange(e, 'procedures', 'review')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">B. Motivation (Establishing purpose)</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField multiline={true} value={dllContent.procedures.motivation} onBlur={(e) => handleDLLChange(e, 'procedures', 'motivation')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">C. Presentation (Presenting examples)</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField multiline={true} value={dllContent.procedures.presentation} onBlur={(e) => handleDLLChange(e, 'procedures', 'presentation')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">D. Application (Discussing new concepts and practicing new skills)</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField multiline={true} value={dllContent.procedures.application} onBlur={(e) => handleDLLChange(e, 'procedures', 'application')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">E. Generalization (Making generalizations)</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField multiline={true} value={dllContent.procedures.generalization} onBlur={(e) => handleDLLChange(e, 'procedures', 'generalization')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">F. Evaluation/Assessment</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField multiline={true} value={dllContent.procedures.evaluation} onBlur={(e) => handleDLLChange(e, 'procedures', 'evaluation')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black align-top">G. Assignment/Remediation</td>
+                                        <td className="p-2 border border-black">
+                                            <EditableField multiline={true} value={dllContent.procedures.assignment} onBlur={(e) => handleDLLChange(e, 'procedures', 'assignment')} />
+                                        </td>
+                                    </tr>
+                                    
+                                    {/* --- V. REMARKS --- */}
+                                    <tr className="font-bold bg-gray-50">
+                                        <td className="p-2 border border-black" colSpan="2">V. REMARKS</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black" colSpan="2">
+                                            <EditableField multiline={true} value={dllContent.remarks} onBlur={(e) => handleDLLChange(e, 'remarks')} />
+                                        </td>
+                                    </tr>
+                                    
+                                    {/* --- VI. REFLECTION --- */}
+                                    <tr className="font-bold bg-gray-50">
+                                        <td className="p-2 border border-black" colSpan="2">VI. REFLECTION</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black" colSpan="2">
+                                            <EditableField multiline={true} value={dllContent.reflection.a} onBlur={(e) => handleDLLChange(e, 'reflection', 'a')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black" colSpan="2">
+                                            <EditableField multiline={true} value={dllContent.reflection.b} onBlur={(e) => handleDLLChange(e, 'reflection', 'b')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black" colSpan="2">
+                                            <EditableField multiline={true} value={dllContent.reflection.c} onBlur={(e) => handleDLLChange(e, 'reflection', 'c')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black" colSpan="2">
+                                            <EditableField multiline={true} value={dllContent.reflection.d} onBlur={(e) => handleDLLChange(e, 'reflection', 'd')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black" colSpan="2">
+                                            <EditableField multiline={true} value={dllContent.reflection.e} onBlur={(e) => handleDLLChange(e, 'reflection', 'e')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black" colSpan="2">
+                                            <EditableField multiline={true} value={dllContent.reflection.f} onBlur={(e) => handleDLLChange(e, 'reflection', 'f')} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-2 border border-black" colSpan="2">
+                                            <EditableField multiline={true} value={dllContent.reflection.g} onBlur={(e) => handleDLLChange(e, 'reflection', 'g')} />
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            {/* --- Signatories --- */}
+                            <table className="w-full mt-8 text-sm">
+                                <tbody>
+                                    <tr>
+                                        <td className="w-1/2 p-2">
+                                            <div className="pl-4">
+                                                <p>Prepared by:</p>
+                                                <br /><br />
+                                                <p className="font-bold uppercase underline">
+                                                    <EditableField value={teacherInfo.preparedBy} onBlur={(e) => handleInfoChange({target: {name: 'preparedBy', value: e.target.innerText}})} />
+                                                </p>
+                                                <p>Teacher</p>
+                                            </div>
+                                        </td>
+                                        <td className="w-1/2 p-2">
+                                            <div className="pl-4">
+                                                <p>Checked by:</p>
+                                                <br /><br />
+                                                <p className="font-bold uppercase underline">
+                                                    <EditableField value={teacherInfo.checkedBy} onBlur={(e) => handleInfoChange({target: {name: 'checkedBy', value: e.target.innerText}})} />
+                                                </p>
+                                                <p>Immediate Head / Principal</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    {/* --- ADDED INNOVATOR FOOTER (Non-Printable) --- */}
+                    <InnovationFooter className="no-print" />
+                </div>
+            );
+        }
+        
+        // =================================================================
+        // HELPER COMPONENTS (for forms)
+        // =================================================================
+
+        const Input = ({ label, name, value, onChange, type = "text", placeholder = "" }) => (
+            <div className="mb-2">
+                <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                <input
+                    type={type}
+                    id={name}
+                    name={name}
+                    value={value}
+                    onChange={onChange}
+                    placeholder={placeholder}
+                    className="block w-full border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+            </div>
+        );
+
+        const Select = ({ label, name, value, onChange, options }) => (
+            <div className="mb-2">
+                <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                <select
+                    id={name}
+                    name={name}
+                    value={value}
+                    onChange={onChange}
+                    className="block w-full border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                    {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+            </div>
+        );
+        
+        /**
+         * A custom component to manage contentEditable fields.
+         */
+        const EditableField = ({ value, onBlur, multiline = false }) => {
+            const Tag = multiline ? 'div' : 'span';
+            
+            // This key is crucial. It forces React to re-render the
+            // component with the new `innerText` if the state changes
+            // from an external source (like the "Generate" button).
+            const key = value + Date.now(); 
+
+            return (
+                <Tag
+                    key={key}
+                    contentEditable="true"
+                    suppressContentEditableWarning={true}
+                    onBlur={onBlur}
+                    className={`w-full block ${multiline ? 'whitespace-pre-wrap' : ''}`}
+                >
+                    {value}
+                </Tag>
+            );
+        };
+
+
+        // --- Mount the React App ---
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(
+            <StrictMode>
+                <App />
+            </StrictMode>
+        );
+
+    </script>
+
+</body>
+</html>
